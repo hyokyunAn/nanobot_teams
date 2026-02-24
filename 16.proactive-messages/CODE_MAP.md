@@ -22,3 +22,6 @@
 - [config.py](/Users/ahk/github_codes/nanobot/16.proactive-messages/config.py): 환경변수 로드
 - [app.py](/Users/ahk/github_codes/nanobot/16.proactive-messages/app.py): `_internal_auth_ok()`
 
+6. nanobot 측 inbound/proactive 릴레이
+- [commands.py](/Users/ahk/github_codes/nanobot/nanobot/cli/commands.py): `relay` 커맨드
+- [server.py](/Users/ahk/github_codes/nanobot/nanobot/relay/server.py): `/internal/inbound` 수신, outbound proactive 전달

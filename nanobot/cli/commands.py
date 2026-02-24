@@ -435,6 +435,121 @@ def gateway(
     asyncio.run(run())
 
 
+@app.command()
+def relay(
+    host: str = typer.Option("127.0.0.1", "--host", help="Relay bind host"),
+    port: int = typer.Option(18800, "--port", "-p", help="Relay port"),
+    inbound_timeout: float = typer.Option(8.0, "--inbound-timeout", help="Sync reply timeout (seconds)"),
+    teams_proactive_url: str = typer.Option(
+        "http://127.0.0.1:3978/internal/proactive",
+        "--teams-proactive-url",
+        help="Teams backend proactive endpoint",
+    ),
+    internal_token: str = typer.Option("", "--internal-token", envvar="INTERNAL_TOKEN", help="Inbound auth token"),
+    teams_internal_token: str = typer.Option(
+        "",
+        "--teams-internal-token",
+        envvar="TEAMS_INTERNAL_TOKEN",
+        help="Token for Teams backend /internal/proactive",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+):
+    """Run nanobot Teams relay server (/internal/inbound)."""
+    from nanobot.config.loader import load_config, get_data_dir
+    from nanobot.bus.events import OutboundMessage
+    from nanobot.bus.queue import MessageBus
+    from nanobot.agent.loop import AgentLoop
+    from nanobot.session.manager import SessionManager
+    from nanobot.cron.service import CronService
+    from nanobot.cron.types import CronJob
+    from nanobot.heartbeat.service import HeartbeatService
+    from nanobot.relay.server import TeamsInboundRelayServer
+
+    if verbose:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+
+    console.print(f"{__logo__} Starting nanobot relay on {host}:{port}...")
+
+    config = load_config()
+    bus = MessageBus()
+    provider = _make_provider(config)
+    session_manager = SessionManager(config.workspace_path)
+
+    cron_store_path = get_data_dir() / "cron" / "jobs.json"
+    cron = CronService(cron_store_path)
+
+    agent = AgentLoop(
+        bus=bus,
+        provider=provider,
+        workspace=config.workspace_path,
+        model=config.agents.defaults.model,
+        temperature=config.agents.defaults.temperature,
+        max_tokens=config.agents.defaults.max_tokens,
+        max_iterations=config.agents.defaults.max_tool_iterations,
+        memory_window=config.agents.defaults.memory_window,
+        brave_api_key=config.tools.web.search.api_key or None,
+        exec_config=config.tools.exec,
+        cron_service=cron,
+        restrict_to_workspace=config.tools.restrict_to_workspace,
+        session_manager=session_manager,
+        mcp_servers=config.tools.mcp_servers,
+    )
+
+    async def on_cron_job(job: CronJob) -> str | None:
+        target_channel = job.payload.channel or "teams"
+        target_chat = job.payload.to or "direct"
+        response = await agent.process_direct(
+            job.payload.message,
+            session_key=f"cron:{job.id}",
+            channel=target_channel,
+            chat_id=target_chat,
+        )
+        if job.payload.deliver and job.payload.to:
+            await bus.publish_outbound(OutboundMessage(
+                channel=target_channel,
+                chat_id=job.payload.to,
+                content=response or "",
+            ))
+        return response
+    cron.on_job = on_cron_job
+
+    async def on_heartbeat(prompt: str) -> str:
+        return await agent.process_direct(prompt, session_key="heartbeat")
+
+    heartbeat = HeartbeatService(
+        workspace=config.workspace_path,
+        on_heartbeat=on_heartbeat,
+        interval_s=30 * 60,
+        enabled=True,
+    )
+
+    relay_server = TeamsInboundRelayServer(
+        bus=bus,
+        agent=agent,
+        cron=cron,
+        heartbeat=heartbeat,
+        host=host,
+        port=port,
+        inbound_timeout_sec=inbound_timeout,
+        internal_token=internal_token,
+        teams_proactive_url=teams_proactive_url,
+        teams_internal_token=teams_internal_token or internal_token,
+    )
+
+    async def run():
+        try:
+            await relay_server.start()
+            await asyncio.Event().wait()
+        finally:
+            await relay_server.stop()
+
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        console.print("\nShutting down...")
+
+
 
 
 # ============================================================================
