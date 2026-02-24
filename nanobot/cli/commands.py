@@ -299,6 +299,8 @@ def _make_provider(config: Config):
             api_key=p.api_key if p else "no-key",
             api_base=config.get_api_base(model) or "http://localhost:8000/v1",
             default_model=model,
+            azure_endpoint=p.azure_endpoint if p else None,
+            api_version=p.api_version if p else None,
         )
 
     from nanobot.providers.registry import find_by_name
