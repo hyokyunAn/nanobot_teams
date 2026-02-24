@@ -17,7 +17,7 @@ Azure에 배포할 Bot Framework 백엔드입니다.
 - `MicrosoftAppTenantId`
 - `PORT` (default: `3978`)
 - `NANOBOT_INBOUND_URL` (default: `http://127.0.0.1:18800/internal/inbound`)
-- `NANOBOT_TIMEOUT_SEC` (default: `8`)
+- `NANOBOT_TIMEOUT_SEC` (default: `20`)
 - `INTERNAL_TOKEN` (optional)
 - `REFERENCE_STORE_PATH` (default: `./data/conversation_references.json`)
 

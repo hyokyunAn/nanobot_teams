@@ -329,6 +329,7 @@ def gateway(
 ):
     """Start the nanobot gateway."""
     from nanobot.config.loader import load_config, get_data_dir
+    from nanobot.bus.events import OutboundMessage
     from nanobot.bus.queue import MessageBus
     from nanobot.agent.loop import AgentLoop
     from nanobot.channels.manager import ChannelManager
@@ -373,6 +374,14 @@ def gateway(
     # Set cron callback (needs agent)
     async def on_cron_job(job: CronJob) -> str | None:
         """Execute a cron job through the agent."""
+        if job.payload.deliver and job.payload.to:
+            await bus.publish_outbound(OutboundMessage(
+                channel=job.payload.channel or "cli",
+                chat_id=job.payload.to,
+                content=job.payload.message,
+            ))
+            return job.payload.message
+
         response = await agent.process_direct(
             job.payload.message,
             session_key=f"cron:{job.id}",
@@ -380,11 +389,10 @@ def gateway(
             chat_id=job.payload.to or "direct",
         )
         if job.payload.deliver and job.payload.to:
-            from nanobot.bus.events import OutboundMessage
             await bus.publish_outbound(OutboundMessage(
                 channel=job.payload.channel or "cli",
                 chat_id=job.payload.to,
-                content=response or ""
+                content=response or "",
             ))
         return response
     cron.on_job = on_cron_job
@@ -499,6 +507,14 @@ def relay(
     async def on_cron_job(job: CronJob) -> str | None:
         target_channel = job.payload.channel or "teams"
         target_chat = job.payload.to or "direct"
+        if job.payload.deliver and job.payload.to:
+            await bus.publish_outbound(OutboundMessage(
+                channel=target_channel,
+                chat_id=job.payload.to,
+                content=job.payload.message,
+            ))
+            return job.payload.message
+
         response = await agent.process_direct(
             job.payload.message,
             session_key=f"cron:{job.id}",
