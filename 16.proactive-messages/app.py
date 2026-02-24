@@ -63,7 +63,22 @@ def _internal_auth_ok(req: Request) -> bool:
 
 
 async def messages(req: Request) -> Response:
+    ts = datetime.utcnow().isoformat() + "Z"
+    forwarded_for = req.headers.get("x-forwarded-for", "")
+    remote = forwarded_for.split(",")[0].strip() if forwarded_for else (req.remote or "")
+    print(f"[{ts}] POST /api/messages from={remote} ua={req.headers.get('user-agent', '-')}")
     return await ADAPTER.process(req, BOT)
+
+
+async def messages_get(_: Request) -> Response:
+    return Response(
+        status=HTTPStatus.OK,
+        text=(
+            "This endpoint only accepts POST from Bot Framework channels.\n"
+            "Use GET /healthz for health checks."
+        ),
+        content_type="text/plain",
+    )
 
 
 async def proactive(req: Request) -> Response:
@@ -97,6 +112,7 @@ async def on_cleanup(_: web.Application):
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 APP.router.add_post("/api/messages", messages)
+APP.router.add_get("/api/messages", messages_get)
 APP.router.add_post("/internal/proactive", proactive)
 APP.router.add_get("/healthz", healthz)
 APP.on_cleanup.append(on_cleanup)
