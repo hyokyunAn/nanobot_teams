@@ -355,7 +355,8 @@ mcp = FastMCP(
     instructions=(
         "DS QA Agent over Confluence pages. "
         "Reads instruction prompt from DS_QA_PROMPT_PAGE_URL/ID and uses "
-        "DS_QA_DB_PAGE_URL/ID plus descendants as knowledge base."
+        "DS_QA_DB_PAGE_URL/ID plus descendants as knowledge base. "
+        "Use this MCP for data-science/DS questions and GENAI space knowledge lookup."
     ),
 )
 
@@ -436,6 +437,9 @@ async def ask_ds_qa(
     """
     Answer a DS QA question using Confluence prompt + DB tree references.
 
+    Use this for data-science team questions (DS process, prompt guide, DB docs,
+    GENAI space knowledge, internal procedure lookup).
+
     Returns structured JSON containing the prompt, ranked references, and an answer draft.
     """
     try:
@@ -505,6 +509,20 @@ async def ask_ds_qa(
         return _as_json_text(out)
     except Exception as exc:
         return _friendly_error(exc)
+
+
+@mcp.tool()
+async def ask_data_science_qa(
+    question: str,
+    top_k: int = 6,
+) -> str:
+    """
+    Preferred DS query entry point.
+
+    Trigger this when the user asks about Data Science team docs, GENAI wiki,
+    prompt standards, DB hierarchy, or internal guidance stored in Confluence.
+    """
+    return await ask_ds_qa(question=question, top_k=top_k, include_prompt=True)
 
 
 if __name__ == "__main__":

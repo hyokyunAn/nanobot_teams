@@ -102,11 +102,58 @@ python workspace/mcp/ds_qa_agent_mcp.py
 - 상태 확인: `health`
 - 인덱스 강제 갱신: `refresh_index`
 - 인덱싱된 DB 페이지 목록: `list_db_pages`
-- 질의응답: `ask_ds_qa`
+- 질의응답: `ask_data_science_qa` (우선), `ask_ds_qa`
 
 nanobot 연결 후 실제 노출 이름은 `mcp_dsqa_<tool>` 입니다.
 
-## 3) nanobot 연결 (`~/.nanobot/config.json`)
+## 3) Jira Data Center MCP
+
+- 서버 파일: `workspace/mcp/jira_mcp.py`
+- 실행 스크립트: `workspace/mcp/run-jira-mcp.sh`
+
+### 기본 환경변수
+
+```bash
+export JIRA_BASE_URL="https://dt-jira.mobis.com"
+export JIRA_BEARER_TOKEN="your_pat_here"
+```
+
+레거시 호환:
+
+```bash
+export JIRA_PAT="your_pat_here"
+```
+
+선택 옵션:
+
+```bash
+export JIRA_TIMEOUT_SECONDS="30"
+export JIRA_VERIFY_SSL="true"
+```
+
+### 실행
+
+```bash
+./workspace/mcp/run-jira-mcp.sh
+```
+
+또는:
+
+```bash
+python workspace/mcp/jira_mcp.py
+```
+
+### 제공 기능 (tool)
+
+- 티켓 읽기: `get_issue`
+- 티켓 생성: `create_issue`
+- 티켓 수정(필드): `update_issue`
+- 티켓 상태 변경: `transition_issue`
+- 추가 기능: `search_issues`, `list_transitions`, `add_comment`, `health`
+
+nanobot 연결 후 실제 노출 이름은 `mcp_jira_<tool>` 입니다.
+
+## 4) nanobot 연결 (`~/.nanobot/config.json`)
 
 아래 `tools.mcpServers` 항목을 추가/병합하세요.
 
@@ -131,22 +178,31 @@ nanobot 연결 후 실제 노출 이름은 `mcp_dsqa_<tool>` 입니다.
           "DS_QA_PROMPT_PAGE_URL": "https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/프롬프트",
           "DS_QA_DB_PAGE_URL": "https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/DB"
         }
+      },
+      "jira": {
+        "command": "python",
+        "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/jira_mcp.py"],
+        "env": {
+          "JIRA_BASE_URL": "https://dt-jira.mobis.com",
+          "JIRA_BEARER_TOKEN": "your_pat_here"
+        }
       }
     }
   }
 }
 ```
 
-## 4) 빠른 확인
+## 5) 빠른 확인
 
 ```bash
-nanobot agent --logs -m "MCP 서버 연결 상태를 확인하고 mcp_atlassian_health와 mcp_dsqa_health를 호출해줘."
+nanobot agent --logs -m "MCP 서버 연결 상태를 확인하고 mcp_atlassian_health, mcp_dsqa_health, mcp_jira_health를 호출해줘."
 ```
 
 로그에 아래와 같은 연결 메시지가 보이면 성공입니다.
 
 - `MCP server 'atlassian': connected`
 - `MCP server 'dsqa': connected`
+- `MCP server 'jira': connected`
 
 ---
 
