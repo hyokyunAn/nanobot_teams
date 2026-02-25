@@ -43,6 +43,19 @@ class AgentLoop:
     5. Sends responses back
     """
 
+    _DSQA_TOOL_PREFERRED = "mcp_dsqa_ask_data_science_qa"
+    _DSQA_TOOL_FALLBACK = "mcp_dsqa_ask_ds_qa"
+    _DSQA_PREFETCH_MAX_CHARS = 18000
+    _DS_KEYWORDS = (
+        # Korean
+        "데이터사이언스", "데이터 사이언스", "데이터사이언스팀", "데이터 사이언스팀",
+        "데사팀", "데싸팀", "데사", "데싸", "ds팀", "데이터팀",
+        "genai", "프롬프트", "컨플루언스", "위키", "db 문서", "지식베이스",
+        # English
+        "data science", "datascience", "ds team", "genai", "confluence", "wiki",
+        "knowledge base", "prompt guide", "internal docs",
+    )
+
     def __init__(
         self,
         bus: MessageBus,
@@ -172,6 +185,51 @@ class AgentLoop:
                 return tc.name
             return f'{tc.name}("{val[:40]}…")' if len(val) > 40 else f'{tc.name}("{val}")'
         return ", ".join(_fmt(tc) for tc in tool_calls)
+
+    def _should_prefetch_dsqa(self, text: str) -> bool:
+        if not text.strip():
+            return False
+        lowered = text.lower()
+        normalized = re.sub(r"[\s\-_]+", "", lowered)
+        for keyword in self._DS_KEYWORDS:
+            kw = keyword.lower()
+            if kw in lowered:
+                return True
+            if re.sub(r"[\s\-_]+", "", kw) in normalized:
+                return True
+        return False
+
+    def _pick_dsqa_tool(self) -> str | None:
+        if self.tools.has(self._DSQA_TOOL_PREFERRED):
+            return self._DSQA_TOOL_PREFERRED
+        if self.tools.has(self._DSQA_TOOL_FALLBACK):
+            return self._DSQA_TOOL_FALLBACK
+        return None
+
+    async def _prefetch_dsqa_context(self, text: str) -> str | None:
+        if not self._should_prefetch_dsqa(text):
+            return None
+        tool_name = self._pick_dsqa_tool()
+        if not tool_name:
+            return None
+
+        logger.info("DSQA prefetch triggered via '{}'", tool_name)
+        result = await self.tools.execute(tool_name, {"question": text, "top_k": 6})
+        if not result:
+            return None
+
+        clipped = result[: self._DSQA_PREFETCH_MAX_CHARS]
+        if clipped.startswith("Error:"):
+            return (
+                "DS QA MCP prefetch failed. "
+                "Call DS QA MCP manually before answering DS-related requests.\n"
+                f"Prefetch error: {clipped}"
+            )
+
+        return (
+            "DS QA MCP prefetch context (high-priority reference for this user query):\n"
+            f"{clipped}"
+        )
 
     async def _run_agent_loop(
         self,
@@ -360,6 +418,9 @@ class AgentLoop:
             media=msg.media if msg.media else None,
             channel=msg.channel, chat_id=msg.chat_id,
         )
+        dsqa_context = await self._prefetch_dsqa_context(msg.content)
+        if dsqa_context:
+            initial_messages.insert(1, {"role": "system", "content": dsqa_context})
 
         async def _bus_progress(content: str) -> None:
             meta = dict(msg.metadata or {})

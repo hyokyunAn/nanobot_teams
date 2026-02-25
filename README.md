@@ -137,6 +137,7 @@ streamlit run streamlit_chat.py
 
 - Inbound URL: `http://127.0.0.1:18800/internal/inbound` (로컬)
 - Internal Token: relay를 `INTERNAL_TOKEN`으로 띄웠다면 동일 값 입력
+- Auto Poll: 켜두면 `/internal/web/poll`을 주기적으로 조회해 cron/비동기 응답을 표시
 
 `status=accepted`가 자주 보이면 relay `--inbound-timeout` 값을 더 크게 설정하세요.
 

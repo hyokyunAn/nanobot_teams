@@ -54,6 +54,8 @@ class TeamsInboundRelayServer:
         self._runner: web.AppRunner | None = None
         self._site: web.TCPSite | None = None
         self._http = httpx.AsyncClient(timeout=15.0)
+        self._web_outbox: dict[str, list[dict[str, Any]]] = {}
+        self._web_outbox_max_per_chat = 200
 
     def _auth_ok(self, req: Request) -> bool:
         if not self.internal_token:
@@ -108,6 +110,40 @@ class TeamsInboundRelayServer:
     async def _healthz(self, _: Request) -> Response:
         return json_response({"status": "ok"})
 
+    def _enqueue_web_message(self, chat_id: str, content: str, metadata: dict[str, Any] | None = None) -> None:
+        item = {
+            "id": f"webmsg_{uuid4().hex}",
+            "chat_id": chat_id,
+            "content": content,
+            "metadata": metadata or {},
+        }
+        queue = self._web_outbox.setdefault(chat_id, [])
+        queue.append(item)
+        if len(queue) > self._web_outbox_max_per_chat:
+            del queue[: len(queue) - self._web_outbox_max_per_chat]
+
+    async def _poll_web(self, req: Request) -> Response:
+        if not self._auth_ok(req):
+            return Response(status=HTTPStatus.UNAUTHORIZED, text="unauthorized")
+
+        chat_id = str(req.query.get("chat_id", "")).strip()
+        if not chat_id:
+            return Response(status=HTTPStatus.BAD_REQUEST, text="chat_id required")
+
+        try:
+            limit = int(str(req.query.get("limit", "20")).strip() or "20")
+        except ValueError:
+            limit = 20
+        limit = max(1, min(limit, 100))
+
+        queue = self._web_outbox.get(chat_id, [])
+        if not queue:
+            return json_response({"count": 0, "messages": []})
+
+        batch = queue[:limit]
+        self._web_outbox[chat_id] = queue[limit:]
+        return json_response({"count": len(batch), "messages": batch})
+
     async def _send_proactive(self, *, chat_id: str, content: str, request_id: str = "") -> None:
         if not self.teams_proactive_url:
             return
@@ -149,6 +185,21 @@ class TeamsInboundRelayServer:
                     content=msg.content,
                     request_id=request_id,
                 )
+                continue
+
+            if msg.channel == "web":
+                self._enqueue_web_message(
+                    chat_id=msg.chat_id,
+                    content=msg.content,
+                    metadata=msg.metadata,
+                )
+                continue
+
+            logger.warning(
+                "Outbound message dropped: unsupported channel '{}' (chat_id={})",
+                msg.channel,
+                msg.chat_id,
+            )
 
     async def start(self) -> None:
         if self._running:
@@ -162,6 +213,7 @@ class TeamsInboundRelayServer:
 
         app = web.Application()
         app.router.add_post("/internal/inbound", self._inbound)
+        app.router.add_get("/internal/web/poll", self._poll_web)
         app.router.add_get("/healthz", self._healthz)
         self._runner = web.AppRunner(app)
         await self._runner.setup()
