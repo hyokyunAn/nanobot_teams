@@ -183,7 +183,7 @@ def _token_freq(text: str) -> dict[str, int]:
     return out
 
 
-def _best_snippet(text: str, query_tokens: list[str], max_chars: int = 700) -> str:
+def _best_snippet(text: str, query_tokens: list[str], max_chars: int = 100000) -> str:
     if not text:
         return ""
 
@@ -309,7 +309,7 @@ def _score_doc(question_tokens: list[str], question_lower: str, doc: CachedDoc) 
             score += 2.0 + min(tf, 6) * 0.6
         if token in title_lower:
             score += 2.5
-    if question_lower in (doc.text.lower()[:8000]):
+    if question_lower in (doc.text.lower()[:100000]):
         score += 5.0
     return score
 
@@ -431,8 +431,8 @@ async def ask_ds_qa(
     question: str,
     top_k: int = 6,
     include_prompt: bool = True,
-    max_prompt_chars: int = 6000,
-    max_ref_chars: int = 900,
+    max_prompt_chars: int = 100000,
+    max_ref_chars: int = 100000,
 ) -> str:
     """
     Answer a DS QA question using Confluence prompt + DB tree references.

@@ -45,7 +45,7 @@ class AgentLoop:
 
     _DSQA_TOOL_PREFERRED = "mcp_dsqa_ask_data_science_qa"
     _DSQA_TOOL_FALLBACK = "mcp_dsqa_ask_ds_qa"
-    _DSQA_PREFETCH_MAX_CHARS = 18000
+    _DSQA_PREFETCH_MAX_CHARS = 100000
     _DS_KEYWORDS = (
         # Korean
         "데이터사이언스", "데이터 사이언스", "데이터사이언스팀", "데이터 사이언스팀",

@@ -246,7 +246,7 @@ async def search_pages(
 async def get_page(
     page_id: str,
     include_body: bool = True,
-    max_body_chars: int = 20000,
+    max_body_chars: int = 100000,
 ) -> str:
     """Get page metadata and storage body by page id."""
     try:
@@ -386,7 +386,7 @@ async def list_page_comments(
     limit: int = 25,
     start: int = 0,
     include_body: bool = True,
-    max_body_chars: int = 12000,
+    max_body_chars: int = 100000,
 ) -> str:
     """List comments of a Confluence page."""
     try:
