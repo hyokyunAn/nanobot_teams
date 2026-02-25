@@ -1,16 +1,22 @@
-# Atlassian Confluence MCP (PAT)
+# MCP Servers
 
-이 폴더에는 Confluence PAT 기반 MCP 서버가 있습니다.
+이 폴더에는 nanobot에 연결할 MCP 서버 스크립트가 있습니다.
+
+## 1) Confluence Data Center MCP
 
 - 서버 파일: `workspace/mcp/atlassian_confluence_mcp.py`
 - 실행 스크립트: `workspace/mcp/run-atlassian-mcp.sh`
 
-## 1) 환경변수 준비
-
-Confluence PAT 인증은 `Authorization: Bearer <PAT>` 방식으로 동작합니다.
+### 환경변수
 
 ```bash
-export CONFLUENCE_BASE_URL="https://your-domain.atlassian.net/wiki"
+export CONFLUENCE_BASE_URL="https://dt-confluence.mobis.com"
+export CONFLUENCE_BEARER_TOKEN="your_pat_here"
+```
+
+레거시 호환:
+
+```bash
 export CONFLUENCE_PAT="your_pat_here"
 ```
 
@@ -21,7 +27,7 @@ export CONFLUENCE_TIMEOUT_SECONDS="30"
 export CONFLUENCE_VERIFY_SSL="true"
 ```
 
-## 2) 로컬 실행
+### 실행
 
 ```bash
 ./workspace/mcp/run-atlassian-mcp.sh
@@ -33,7 +39,72 @@ export CONFLUENCE_VERIFY_SSL="true"
 python workspace/mcp/atlassian_confluence_mcp.py
 ```
 
-`stdio` MCP 서버라서 실행 후 대기 상태가 정상입니다.
+### 제공 기능 (tool)
+
+- 페이지 읽기: `get_page`
+- 페이지 업데이트: `update_page`
+- 새 글 쓰기: `create_page`
+- 하위 페이지 탐색: `list_child_pages`
+- 댓글 읽기: `list_page_comments`
+- 댓글 쓰기: `add_page_comment`
+- 그 외: `health`, `list_spaces`, `search_pages`
+
+nanobot 연결 후 실제 노출 이름은 `mcp_atlassian_<tool>` 입니다.
+
+## 2) DS QA Agent MCP
+
+- 서버 파일: `workspace/mcp/ds_qa_agent_mcp.py`
+- 실행 스크립트: `workspace/mcp/run-ds-qa-mcp.sh`
+
+### 동작 방식
+
+- 프롬프트 페이지를 지침으로 사용
+- DB 페이지 + 하위 페이지 전체를 지식베이스로 인덱싱
+- 질문 시 관련 페이지를 랭킹하여 근거 + 답변 초안 반환
+
+### 기본 환경변수
+
+```bash
+export CONFLUENCE_BASE_URL="https://dt-confluence.mobis.com"
+export CONFLUENCE_BEARER_TOKEN="your_pat_here"
+export DS_QA_PROMPT_PAGE_URL="https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/프롬프트"
+export DS_QA_DB_PAGE_URL="https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/DB"
+```
+
+ID를 직접 지정하고 싶으면:
+
+```bash
+export DS_QA_PROMPT_PAGE_ID="133776732"
+export DS_QA_DB_PAGE_ID="133776732"
+```
+
+선택 옵션:
+
+```bash
+export DS_QA_CACHE_TTL_SECONDS="300"
+export DS_QA_MAX_PAGES="300"
+```
+
+### 실행
+
+```bash
+./workspace/mcp/run-ds-qa-mcp.sh
+```
+
+또는:
+
+```bash
+python workspace/mcp/ds_qa_agent_mcp.py
+```
+
+### 제공 기능 (tool)
+
+- 상태 확인: `health`
+- 인덱스 강제 갱신: `refresh_index`
+- 인덱싱된 DB 페이지 목록: `list_db_pages`
+- 질의응답: `ask_ds_qa`
+
+nanobot 연결 후 실제 노출 이름은 `mcp_dsqa_<tool>` 입니다.
 
 ## 3) nanobot 연결 (`~/.nanobot/config.json`)
 
@@ -47,8 +118,18 @@ python workspace/mcp/atlassian_confluence_mcp.py
         "command": "python",
         "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/atlassian_confluence_mcp.py"],
         "env": {
-          "CONFLUENCE_BASE_URL": "https://your-domain.atlassian.net/wiki",
-          "CONFLUENCE_PAT": "your_pat_here"
+          "CONFLUENCE_BASE_URL": "https://dt-confluence.mobis.com",
+          "CONFLUENCE_BEARER_TOKEN": "your_pat_here"
+        }
+      },
+      "dsqa": {
+        "command": "python",
+        "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/ds_qa_agent_mcp.py"],
+        "env": {
+          "CONFLUENCE_BASE_URL": "https://dt-confluence.mobis.com",
+          "CONFLUENCE_BEARER_TOKEN": "your_pat_here",
+          "DS_QA_PROMPT_PAGE_URL": "https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/프롬프트",
+          "DS_QA_DB_PAGE_URL": "https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/DB"
         }
       }
     }
@@ -56,62 +137,20 @@ python workspace/mcp/atlassian_confluence_mcp.py
 }
 ```
 
-nanobot 실행 후, MCP 툴은 `mcp_<server>_<tool>` 이름으로 노출됩니다.
-
-- `mcp_atlassian_health`
-- `mcp_atlassian_list_spaces`
-- `mcp_atlassian_search_pages`
-- `mcp_atlassian_get_page`
-- `mcp_atlassian_create_page`
-- `mcp_atlassian_update_page`
-
 ## 4) 빠른 확인
 
 ```bash
-nanobot agent --logs -m "MCP health 체크해줘"
+nanobot agent --logs -m "MCP 서버 연결 상태를 확인하고 mcp_atlassian_health와 mcp_dsqa_health를 호출해줘."
 ```
 
-로그에 `MCP server 'atlassian': connected`가 보이면 연결 성공입니다.
+로그에 아래와 같은 연결 메시지가 보이면 성공입니다.
+
+- `MCP server 'atlassian': connected`
+- `MCP server 'dsqa': connected`
 
 ---
 
-# YouTube Summary MCP
-
-유튜브 영상 자막을 읽어 요약하는 MCP 서버입니다.
+## 참고: YouTube Summary MCP
 
 - 서버 파일: `workspace/mcp/youtube_summary_mcp.py`
 - 실행 스크립트: `workspace/mcp/run-youtube-mcp.sh`
-
-## 1) 로컬 실행
-
-```bash
-./workspace/mcp/run-youtube-mcp.sh
-```
-
-옵션 환경변수:
-
-```bash
-export YOUTUBE_MCP_TIMEOUT_SECONDS="25"
-export YOUTUBE_MCP_USER_AGENT="Mozilla/5.0 ..."
-```
-
-## 2) nanobot 연결 (`~/.nanobot/config.json`)
-
-```json
-{
-  "tools": {
-    "mcpServers": {
-      "youtube": {
-        "command": "python",
-        "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/youtube_summary_mcp.py"]
-      }
-    }
-  }
-}
-```
-
-노출되는 tool 이름:
-
-- `mcp_youtube_health`
-- `mcp_youtube_fetch_transcript`
-- `mcp_youtube_summarize_video`

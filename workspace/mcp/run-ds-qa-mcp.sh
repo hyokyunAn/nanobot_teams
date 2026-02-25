@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVER_PY="${SCRIPT_DIR}/atlassian_confluence_mcp.py"
+SERVER_PY="${SCRIPT_DIR}/ds_qa_agent_mcp.py"
 
 if [[ -z "${CONFLUENCE_BASE_URL:-}" ]]; then
   echo "CONFLUENCE_BASE_URL is required (example: https://dt-confluence.mobis.com)" >&2

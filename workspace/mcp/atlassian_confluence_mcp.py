@@ -41,7 +41,13 @@ def _base_url() -> str:
 
 
 def _headers() -> dict[str, str]:
-    pat = _require_env("CONFLUENCE_PAT")
+    pat = (os.getenv("CONFLUENCE_BEARER_TOKEN") or "").strip()
+    if not pat:
+        pat = (os.getenv("CONFLUENCE_PAT") or "").strip()
+    if not pat:
+        raise ConfigError(
+            "Missing required environment variable: CONFLUENCE_BEARER_TOKEN (or CONFLUENCE_PAT)"
+        )
     return {
         "Authorization": f"Bearer {pat}",
         "Accept": "application/json",
@@ -129,12 +135,30 @@ def _extract_page_summary(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extract_comment_summary(item: dict[str, Any], *, include_body: bool, max_body_chars: int) -> dict[str, Any]:
+    links = item.get("_links") or {}
+    out = {
+        "id": item.get("id"),
+        "type": item.get("type"),
+        "status": item.get("status"),
+        "version": ((item.get("version") or {}).get("number")),
+        "webui": links.get("webui"),
+    }
+    if include_body:
+        body = (((item.get("body") or {}).get("storage") or {}).get("value")) or ""
+        clipped, truncated = _truncate(body, max(100, max_body_chars))
+        out["bodyStorage"] = clipped
+        out["bodyTruncated"] = truncated
+        out["bodyLength"] = len(body)
+    return out
+
+
 mcp = FastMCP(
     name="atlassian-confluence",
     instructions=(
         "Confluence MCP tools using Personal Access Token (PAT). "
-        "Set CONFLUENCE_BASE_URL (e.g. https://<site>.atlassian.net/wiki) "
-        "and CONFLUENCE_PAT before starting."
+        "Set CONFLUENCE_BASE_URL and CONFLUENCE_BEARER_TOKEN before starting. "
+        "Legacy variable CONFLUENCE_PAT is also supported."
     ),
 )
 
@@ -350,6 +374,160 @@ async def update_page(
                 "space": ((updated.get("space") or {}).get("key")),
                 "webui": ((updated.get("_links") or {}).get("webui")),
                 "message": "Page updated.",
+            }
+        )
+    except Exception as exc:
+        return _friendly_error(exc)
+
+
+@mcp.tool()
+async def list_page_comments(
+    page_id: str,
+    limit: int = 25,
+    start: int = 0,
+    include_body: bool = True,
+    max_body_chars: int = 12000,
+) -> str:
+    """List comments of a Confluence page."""
+    try:
+        if not page_id.strip():
+            return "Error: page_id is required."
+
+        n = max(1, min(limit, 200))
+        s = max(0, start)
+        data = await _request_json(
+            "GET",
+            f"/rest/api/content/{page_id}/child/comment",
+            params={
+                "limit": n,
+                "start": s,
+                "expand": "version,body.storage",
+            },
+        )
+        comments = [
+            _extract_comment_summary(
+                item,
+                include_body=include_body,
+                max_body_chars=max_body_chars,
+            )
+            for item in data.get("results", [])
+        ]
+        return _as_json_text(
+            {
+                "pageId": page_id,
+                "count": len(comments),
+                "limit": n,
+                "start": s,
+                "comments": comments,
+            }
+        )
+    except Exception as exc:
+        return _friendly_error(exc)
+
+
+@mcp.tool()
+async def add_page_comment(
+    page_id: str,
+    body_storage: str,
+) -> str:
+    """Create a comment on a page (storage format)."""
+    try:
+        if not page_id.strip():
+            return "Error: page_id is required."
+        if not body_storage.strip():
+            return "Error: body_storage is required."
+
+        payload = {
+            "type": "comment",
+            "container": {"type": "page", "id": page_id.strip()},
+            "body": {"storage": {"value": body_storage, "representation": "storage"}},
+        }
+        created = await _request_json("POST", "/rest/api/content", payload=payload)
+        out = _extract_comment_summary(created, include_body=False, max_body_chars=0)
+        out["pageId"] = page_id.strip()
+        out["message"] = "Comment created."
+        return _as_json_text(out)
+    except Exception as exc:
+        return _friendly_error(exc)
+
+
+@mcp.tool()
+async def list_child_pages(
+    page_id: str,
+    recursive: bool = False,
+    limit: int = 25,
+    start: int = 0,
+    max_pages: int = 300,
+) -> str:
+    """List child pages of a parent page. Supports recursive traversal."""
+    try:
+        if not page_id.strip():
+            return "Error: page_id is required."
+
+        parent_id = page_id.strip()
+        page_size = max(1, min(limit, 100))
+
+        if not recursive:
+            data = await _request_json(
+                "GET",
+                f"/rest/api/content/{parent_id}/child/page",
+                params={"limit": page_size, "start": max(0, start), "expand": "version,space"},
+            )
+            children = [_extract_page_summary(item) for item in data.get("results", [])]
+            return _as_json_text(
+                {
+                    "parentId": parent_id,
+                    "recursive": False,
+                    "count": len(children),
+                    "limit": page_size,
+                    "start": max(0, start),
+                    "children": children,
+                }
+            )
+
+        cap = max(1, min(max_pages, 2000))
+        queue = [parent_id]
+        seen: set[str] = set()
+        out: list[dict[str, Any]] = []
+
+        while queue and len(out) < cap:
+            current_parent = queue.pop(0)
+            child_start = 0
+
+            while len(out) < cap:
+                data = await _request_json(
+                    "GET",
+                    f"/rest/api/content/{current_parent}/child/page",
+                    params={"limit": page_size, "start": child_start, "expand": "version,space"},
+                )
+                batch = data.get("results", [])
+                if not batch:
+                    break
+
+                for item in batch:
+                    child_id = str(item.get("id") or "").strip()
+                    if not child_id or child_id in seen:
+                        continue
+                    seen.add(child_id)
+
+                    summary = _extract_page_summary(item)
+                    summary["parentId"] = current_parent
+                    out.append(summary)
+                    queue.append(child_id)
+                    if len(out) >= cap:
+                        break
+
+                if len(batch) < page_size:
+                    break
+                child_start += page_size
+
+        return _as_json_text(
+            {
+                "parentId": parent_id,
+                "recursive": True,
+                "count": len(out),
+                "maxPages": cap,
+                "children": out,
             }
         )
     except Exception as exc:
