@@ -18,7 +18,7 @@
     },
     "telegram": {
       "enabled": true,
-      "token": "8708329272:AAGxTOijhUVXxym2d9YGUaLrJ0p5QN_OxNs",
+      "token": "",
       "allowFrom": [
         "HKAn109"
       ]
