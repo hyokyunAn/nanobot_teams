@@ -300,18 +300,30 @@ class Config(BaseSettings):
             kw = kw.lower()
             return kw in model_lower or kw.replace("-", "_") in model_normalized
 
+        def _is_provider_configured(spec_name: str, p: "ProviderConfig | None", is_oauth: bool) -> bool:
+            if not p:
+                return False
+            if is_oauth:
+                return True
+            if p.api_key:
+                return True
+            # Custom direct provider can run without API key when endpoint is explicitly set.
+            if spec_name == "custom" and (p.azure_endpoint or p.api_base):
+                return True
+            return False
+
         # Explicit provider prefix wins — prevents `github-copilot/...codex` matching openai_codex.
         for spec in PROVIDERS:
             p = getattr(self.providers, spec.name, None)
             if p and model_prefix and normalized_prefix == spec.name:
-                if spec.is_oauth or p.api_key:
+                if _is_provider_configured(spec.name, p, spec.is_oauth):
                     return p, spec.name
 
         # Match by keyword (order follows PROVIDERS registry)
         for spec in PROVIDERS:
             p = getattr(self.providers, spec.name, None)
             if p and any(_kw_matches(kw) for kw in spec.keywords):
-                if spec.is_oauth or p.api_key:
+                if _is_provider_configured(spec.name, p, spec.is_oauth):
                     return p, spec.name
 
         # Fallback: gateways first, then others (follows registry order)
@@ -320,7 +332,7 @@ class Config(BaseSettings):
             if spec.is_oauth:
                 continue
             p = getattr(self.providers, spec.name, None)
-            if p and p.api_key:
+            if _is_provider_configured(spec.name, p, spec.is_oauth):
                 return p, spec.name
         return None, None
 
