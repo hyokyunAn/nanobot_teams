@@ -114,6 +114,32 @@ https://<your-backend>/api/messages
 4. 백엔드가 Teams로 응답합니다.
 5. nanobot의 cron/tool 결과는 proactive로 Teams에 푸시할 수 있습니다.
 
+## Teams 연결 전 웹 채팅(Streamlit) 테스트
+
+Teams 대신 브라우저 채팅 UI로 relay를 먼저 검증할 수 있습니다.
+
+1. relay 실행
+
+```bash
+cd /Users/ahk/github_codes/nanobot
+python -m nanobot relay --host 0.0.0.0 --port 18800 --inbound-timeout 120
+```
+
+2. Streamlit 실행
+
+```bash
+cd /Users/ahk/github_codes/nanobot
+python -m pip install -e ".[ui]"
+streamlit run streamlit_chat.py
+```
+
+3. 브라우저에서 사이드바 값을 확인
+
+- Inbound URL: `http://127.0.0.1:18800/internal/inbound` (로컬)
+- Internal Token: relay를 `INTERNAL_TOKEN`으로 띄웠다면 동일 값 입력
+
+`status=accepted`가 자주 보이면 relay `--inbound-timeout` 값을 더 크게 설정하세요.
+
 ## 코드 읽기 시작점
 
 - 백엔드 진입점: `16.proactive-messages/app.py`
