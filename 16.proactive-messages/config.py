@@ -29,7 +29,7 @@ class Settings:
             app_tenant_id=os.environ.get("MicrosoftAppTenantId", ""),
             nanobot_inbound_url=os.environ.get(
                 "NANOBOT_INBOUND_URL",
-                "http://127.0.0.1:18800/internal/inbound",
+                "https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound",
             ),
             nanobot_timeout_sec=float(os.environ.get("NANOBOT_TIMEOUT_SEC", "20")),
             internal_token=os.environ.get("INTERNAL_TOKEN", ""),

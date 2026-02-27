@@ -108,7 +108,7 @@ https://<your-backend>/api/messages
 - `MicrosoftAppType` (권장: `SingleTenant`, 기본값 `MultiTenant`)
 - `MicrosoftAppTenantId`
 - `PORT` (기본값 `3978`)
-- `NANOBOT_INBOUND_URL` (기본값 `http://127.0.0.1:18800/internal/inbound`)
+- `NANOBOT_INBOUND_URL` (기본값 `https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound`)
 - `NANOBOT_TIMEOUT_SEC` (기본값 `20`)
 - `INTERNAL_TOKEN` (선택, 내부 API 보호)
 - `REFERENCE_STORE_PATH` (기본값 `./data/conversation_references.json`)
@@ -122,10 +122,14 @@ https://<your-backend>/api/messages
 
 ### App Service 권장 값 예시
 
-- `NANOBOT_INBOUND_URL=https://moai-ext.mobs.com/dt-atlassian/chat/internal/inbound`
+- `NANOBOT_INBOUND_URL=https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound`
 - `INTERNAL_TOKEN=<relay와_동일한_토큰>`
 - `NANOBOT_TIMEOUT_SEC=120`
 - `REFERENCE_STORE_PATH=/home/data/conversation_references.json`
+
+DNS/프록시 예시:
+- `moai-ext-mobis.com` -> `103.85.81.36` (A 레코드)
+- `/dt-atlassian/chat/*` -> relay `http://127.0.0.1:18800/*` 또는 내부 네트워크 주소로 프록시
 
 ## 어떻게 사용하나?
 

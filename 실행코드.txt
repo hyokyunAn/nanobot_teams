@@ -18,12 +18,12 @@ python -m nanobot relay --host 0.0.0.0 --port 18800 --inbound-timeout 120
 
 # terminal B: run streamlit UI
 cd /Users/ahk/github_codes/nanobot
-export NANOBOT_INBOUND_URL="https://moai-ext.mobs.com/dt-atlassian/chat/internal/inbound"
+export NANOBOT_INBOUND_URL="https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound"
 export INTERNAL_TOKEN="your_token"
 streamlit run streamlit_chat.py
 
 # streamlit sidebar values
-# Inbound URL: https://moai-ext.mobs.com/dt-atlassian/chat/internal/inbound
+# Inbound URL: https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound
 # Internal Token: same as relay INTERNAL_TOKEN
 
 
@@ -44,7 +44,7 @@ python -m nanobot relay \
 # MicrosoftAppPassword=<app_password>
 # MicrosoftAppType=SingleTenant
 # MicrosoftAppTenantId=<tenant_id>
-# NANOBOT_INBOUND_URL=https://moai-ext.mobs.com/dt-atlassian/chat/internal/inbound
+# NANOBOT_INBOUND_URL=https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound
 # INTERNAL_TOKEN=shared_token
 # NANOBOT_TIMEOUT_SEC=120
 # REFERENCE_STORE_PATH=/home/data/conversation_references.json
@@ -65,4 +65,4 @@ python -m nanobot relay \
 https://<your-appservice>/healthz
 
 # relay (if exposed by reverse proxy path)
-https://moai-ext.mobs.com/dt-atlassian/chat/healthz
+https://moai-ext-mobis.com/dt-atlassian/chat/healthz

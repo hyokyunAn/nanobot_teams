@@ -13,7 +13,7 @@ import streamlit as st
 
 DEFAULT_INBOUND_URL = os.environ.get(
     "NANOBOT_INBOUND_URL",
-    "http://127.0.0.1:18800/internal/inbound",
+    "https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound",
 )
 DEFAULT_INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
 DEFAULT_TIMEOUT_SEC = 120.0

@@ -22,7 +22,7 @@ Azure에 배포할 Bot Framework 백엔드입니다.
 - `MicrosoftAppType` (recommended: `SingleTenant`, default: `MultiTenant`)
 - `MicrosoftAppTenantId`
 - `PORT` (default: `3978`)
-- `NANOBOT_INBOUND_URL` (default: `http://127.0.0.1:18800/internal/inbound`)
+- `NANOBOT_INBOUND_URL` (default: `https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound`)
 - `NANOBOT_TIMEOUT_SEC` (default: `20`)
 - `INTERNAL_TOKEN` (optional)
   - 설정 시, 백엔드 -> nanobot 호출 헤더(`x-internal-token`)에 사용
@@ -66,13 +66,18 @@ Startup Command:
 - `MicrosoftAppPassword`
 - `MicrosoftAppType=SingleTenant`
 - `MicrosoftAppTenantId`
-- `NANOBOT_INBOUND_URL=https://moai-ext.mobs.com/dt-atlassian/chat/internal/inbound`
+- `NANOBOT_INBOUND_URL=https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound`
 - `INTERNAL_TOKEN=<relay와 동일 토큰>`
 
 권장:
 
 - `NANOBOT_TIMEOUT_SEC=120`
 - `REFERENCE_STORE_PATH=/home/data/conversation_references.json`
+
+DNS/프록시 예시:
+
+- `moai-ext-mobis.com` -> `103.85.81.36` (A 레코드)
+- `/dt-atlassian/chat/*` -> relay `http://127.0.0.1:18800/*` 또는 내부 네트워크 주소로 프록시
 
 ## Pipeline Run Order
 
