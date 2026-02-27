@@ -85,13 +85,27 @@ https://<your-backend>/api/messages
 
 `16.proactive-messages`를 Azure App Service에 배포하면 Teams 앱으로 연결할 수 있습니다.
 
+### Azure App Service zip 배포 (16.proactive-messages)
+
+`16.proactive-messages`를 압축해 App Service에 배포하는 경우:
+
+1. `startup.sh` 포함해서 배포
+2. App Service Startup Command 설정
+   - zip 루트에 `app.py`가 바로 있으면: `bash /home/site/wwwroot/startup.sh`
+   - zip 루트에 `16.proactive-messages/` 폴더가 있으면:
+     `bash /home/site/wwwroot/16.proactive-messages/startup.sh`
+3. `startup.sh`는 아래를 자동 수행
+   - venv 생성/활성화
+   - 의존성 설치
+   - `gunicorn + aiohttp worker`로 `app:APP` 실행
+
 ## 필수 환경변수
 
 ### Teams 백엔드 (`16.proactive-messages/app.py`)
 
 - `MicrosoftAppId`
 - `MicrosoftAppPassword`
-- `MicrosoftAppType` (기본값 `MultiTenant`)
+- `MicrosoftAppType` (권장: `SingleTenant`, 기본값 `MultiTenant`)
 - `MicrosoftAppTenantId`
 - `PORT` (기본값 `3978`)
 - `NANOBOT_INBOUND_URL` (기본값 `http://127.0.0.1:18800/internal/inbound`)
@@ -105,6 +119,13 @@ https://<your-backend>/api/messages
 - `TEAMS_INTERNAL_TOKEN` (선택, 백엔드 `/internal/proactive` 호출 인증)
 
 같은 토큰을 양쪽에 맞춰 쓰면 가장 단순합니다.
+
+### App Service 권장 값 예시
+
+- `NANOBOT_INBOUND_URL=https://moai-ext.mobs.com/dt-atlassian/chat/internal/inbound`
+- `INTERNAL_TOKEN=<relay와_동일한_토큰>`
+- `NANOBOT_TIMEOUT_SEC=120`
+- `REFERENCE_STORE_PATH=/home/data/conversation_references.json`
 
 ## 어떻게 사용하나?
 
@@ -140,6 +161,26 @@ streamlit run streamlit_chat.py
 - Auto Poll: 켜두면 `/internal/web/poll`을 주기적으로 조회해 cron/비동기 응답을 표시
 
 `status=accepted`가 자주 보이면 relay `--inbound-timeout` 값을 더 크게 설정하세요.
+
+### 로컬 실행 시 NANOBOT_INBOUND_URL
+
+로컬에서 `app.py`와 relay를 같이 실행하면 아래를 사용합니다.
+
+```bash
+NANOBOT_INBOUND_URL=http://127.0.0.1:18800/internal/inbound
+```
+
+relay가 다른 서버에 있으면 `http://<relay-ip>:18800/internal/inbound`처럼
+실제 접근 가능한 주소를 사용하세요.
+
+### SSL 오류 트러블슈팅
+
+`[SSL: ...] record layer failure (_ssl.c:1016)`는 보통 프로토콜 불일치입니다.
+
+- `https://`로 호출했는데 대상이 `http://`인 경우
+- URL 오타(`https:...`) 또는 프록시 TLS 종료 설정 문제
+
+로컬 테스트는 먼저 `http://127.0.0.1:18800/internal/inbound`로 확인하세요.
 
 ## 코드 읽기 시작점
 
