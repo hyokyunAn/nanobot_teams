@@ -328,12 +328,12 @@ async def _load_cache(force: bool = False) -> dict[str, Any]:
     prompt_page_id = _resolve_page_id(
         id_env="DS_QA_PROMPT_PAGE_ID",
         url_env="DS_QA_PROMPT_PAGE_URL",
-        default_url="https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/프롬프트",
+        default_url="",
     )
     db_root_page_id = _resolve_page_id(
         id_env="DS_QA_DB_PAGE_ID",
         url_env="DS_QA_DB_PAGE_URL",
-        default_url="https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/DB",
+        default_url="",
     )
 
     prompt_page = await _fetch_page_with_body(prompt_page_id)

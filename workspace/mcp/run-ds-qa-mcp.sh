@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_PY="${SCRIPT_DIR}/ds_qa_agent_mcp.py"
 
 if [[ -z "${CONFLUENCE_BASE_URL:-}" ]]; then
-  echo "CONFLUENCE_BASE_URL is required (example: https://dt-confluence.mobis.com)" >&2
+  echo "CONFLUENCE_BASE_URL is required (set via environment variable)" >&2
   exit 1
 fi
 

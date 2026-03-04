@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 import uuid
@@ -29,6 +30,8 @@ NANOBOT = NanobotClient(
     inbound_url=SETTINGS.nanobot_inbound_url,
     timeout_sec=SETTINGS.nanobot_timeout_sec,
     token=SETTINGS.internal_token,
+    host_header=SETTINGS.nanobot_inbound_host,
+    verify_ssl=SETTINGS.nanobot_verify_ssl,
 )
 
 ADAPTER = CloudAdapter(ConfigurationBotFrameworkAuthentication(SETTINGS))
@@ -48,7 +51,7 @@ async def on_error(context: TurnContext, error: Exception):
                 timestamp=datetime.utcnow(),
                 type=ActivityTypes.trace,
                 value=f"{error}",
-                value_type="https://www.botframework.com/schemas/error",
+                value_type="botframework.error",
             )
         )
 
@@ -119,4 +122,8 @@ APP.on_cleanup.append(on_cleanup)
 
 
 if __name__ == "__main__":
-    web.run_app(APP, host="0.0.0.0", port=SETTINGS.port)
+    bind_host = (os.environ.get("APP_BIND_HOST") or "").strip()
+    if bind_host:
+        web.run_app(APP, host=bind_host, port=SETTINGS.port)
+    else:
+        web.run_app(APP, port=SETTINGS.port)

@@ -191,9 +191,9 @@ def onboard():
     console.print(f"\n{__logo__} nanobot is ready!")
     console.print("\nNext steps:")
     console.print("  1. Add your API key to [cyan]~/.nanobot/config.json[/cyan]")
-    console.print("     Get one at: https://openrouter.ai/keys")
+    console.print("     Get one from your provider console.")
     console.print("  2. Chat: [cyan]nanobot agent -m \"Hello!\"[/cyan]")
-    console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/HKUDS/nanobot#-chat-apps[/dim]")
+    console.print("\n[dim]Want Telegram/WhatsApp? See project README.[/dim]")
 
 
 
@@ -297,7 +297,7 @@ def _make_provider(config: Config):
     if provider_name == "custom":
         return CustomProvider(
             api_key=p.api_key if p else "no-key",
-            api_base=config.get_api_base(model) or "http://localhost:8000/v1",
+            api_base=config.get_api_base(model) or os.environ.get("NANOBOT_LOCAL_API_BASE", ""),
             default_model=model,
             azure_endpoint=p.azure_endpoint if p else None,
             api_version=p.api_version if p else None,
@@ -439,11 +439,11 @@ def gateway(
 
 @app.command()
 def relay(
-    host: str = typer.Option("127.0.0.1", "--host", help="Relay bind host"),
+    host: str = typer.Option("localhost", "--host", help="Relay bind host"),
     port: int = typer.Option(18800, "--port", "-p", help="Relay port"),
     inbound_timeout: float = typer.Option(8.0, "--inbound-timeout", help="Sync reply timeout (seconds)"),
     teams_proactive_url: str = typer.Option(
-        "http://127.0.0.1:3978/internal/proactive",
+        "",
         "--teams-proactive-url",
         help="Teams backend proactive endpoint",
     ),

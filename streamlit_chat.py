@@ -11,10 +11,38 @@ import httpx
 import streamlit as st
 
 
+def _load_local_env() -> None:
+    """Load simple KEY=VALUE pairs from .env (if present)."""
+    env_path = os.environ.get("NANOBOT_ENV_FILE", ".env")
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export "):].strip()
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip("'").strip('"')
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception:
+        # Fall back to process env only.
+        return
+
+
+_load_local_env()
+
+
 DEFAULT_INBOUND_URL = os.environ.get(
-    "NANOBOT_INBOUND_URL",
-    "https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound",
+    "NANOBOT_INBOUND_URL", ""
 )
+DEFAULT_INBOUND_HOST = os.environ.get("NANOBOT_INBOUND_HOST", "")
 DEFAULT_INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
 DEFAULT_TIMEOUT_SEC = 120.0
 DEFAULT_POLL_INTERVAL_SEC = 5
@@ -39,6 +67,7 @@ def _poll_url_from_inbound(inbound_url: str) -> str:
 def _send_message(
     *,
     inbound_url: str,
+    inbound_host: str,
     internal_token: str,
     timeout_sec: float,
     chat_id: str,
@@ -56,6 +85,9 @@ def _send_message(
     }
 
     headers = {"content-type": "application/json"}
+    if inbound_host:
+        headers["host"] = inbound_host
+        headers["x-forwarded-host"] = inbound_host
     if internal_token:
         headers["x-internal-token"] = internal_token
 
@@ -74,13 +106,17 @@ def _send_message(
 def _poll_messages(
     *,
     inbound_url: str,
+    inbound_host: str,
     internal_token: str,
     timeout_sec: float,
     chat_id: str,
     limit: int = 20,
 ) -> list[dict]:
     poll_url = _poll_url_from_inbound(inbound_url)
-    headers = {}
+    headers: dict[str, str] = {}
+    if inbound_host:
+        headers["host"] = inbound_host
+        headers["x-forwarded-host"] = inbound_host
     if internal_token:
         headers["x-internal-token"] = internal_token
     with httpx.Client(timeout=timeout_sec) as client:
@@ -105,6 +141,7 @@ def main() -> None:
     with st.sidebar:
         st.subheader("Connection")
         inbound_url = st.text_input("Inbound URL", value=DEFAULT_INBOUND_URL)
+        inbound_host = st.text_input("Inbound Host Header", value=DEFAULT_INBOUND_HOST)
         internal_token = st.text_input("Internal Token", value=DEFAULT_INTERNAL_TOKEN, type="password")
         timeout_sec = st.number_input("Timeout (sec)", min_value=5.0, max_value=600.0, value=DEFAULT_TIMEOUT_SEC, step=5.0)
         auto_poll = st.checkbox("Auto Poll", value=True)
@@ -133,6 +170,7 @@ def main() -> None:
         try:
             polled = _poll_messages(
                 inbound_url=inbound_url,
+                inbound_host=inbound_host.strip(),
                 internal_token=internal_token,
                 timeout_sec=float(timeout_sec),
                 chat_id=st.session_state.chat_id,
@@ -178,6 +216,7 @@ def main() -> None:
                 try:
                     status, content, request_id = _send_message(
                         inbound_url=inbound_url,
+                        inbound_host=inbound_host.strip(),
                         internal_token=internal_token,
                         timeout_sec=float(timeout_sec),
                         chat_id=st.session_state.chat_id,

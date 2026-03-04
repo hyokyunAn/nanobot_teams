@@ -17,17 +17,31 @@ Azure에 배포할 Bot Framework 백엔드입니다.
 
 ## Environment
 
+`.env` 파일(권장) 또는 App Service 환경변수로 설정합니다.
+
 - `MicrosoftAppId`
 - `MicrosoftAppPassword`
 - `MicrosoftAppType` (recommended: `SingleTenant`, default: `MultiTenant`)
 - `MicrosoftAppTenantId`
 - `PORT` (default: `3978`)
-- `NANOBOT_INBOUND_URL` (default: `https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound`)
+- `APP_BIND_HOST` (optional)
+- `GUNICORN_BIND` (default: `:${PORT}`)
+- `NANOBOT_INBOUND_URL` (required)
+- `NANOBOT_INBOUND_HOST` (optional, host header override)
 - `NANOBOT_TIMEOUT_SEC` (default: `20`)
+- `NANOBOT_VERIFY_SSL` (default: `true`)
 - `INTERNAL_TOKEN` (optional)
   - 설정 시, 백엔드 -> nanobot 호출 헤더(`x-internal-token`)에 사용
   - 동시에 `/internal/proactive` 인증에도 사용
 - `REFERENCE_STORE_PATH` (default: `./data/conversation_references.json`)
+
+`.env` 템플릿:
+
+```bash
+cp .env.example .env
+```
+
+선택: 다른 파일 경로를 쓰려면 `NANOBOT_ENV_FILE=/path/to/env`를 설정할 수 있습니다.
 
 ## Run
 
@@ -36,13 +50,14 @@ Azure에 배포할 Bot Framework 백엔드입니다.
 ```bash
 cd /Users/ahk/github_codes/nanobot/16.proactive-messages
 pip install -r requirements.txt
+cp .env.example .env   # 값 입력
 python app.py
 ```
 
 로컬에서 relay와 연결할 때:
 
 ```bash
-export NANOBOT_INBOUND_URL=http://127.0.0.1:18800/internal/inbound
+# set NANOBOT_INBOUND_URL in .env
 ```
 
 ## Azure App Service zip deploy
@@ -51,7 +66,7 @@ export NANOBOT_INBOUND_URL=http://127.0.0.1:18800/internal/inbound
 
 - virtualenv 생성/활성화
 - 의존성 설치
-- `gunicorn app:APP --worker-class aiohttp.GunicornWebWorker` 실행
+- `gunicorn app:APP --worker-class aiohttp.worker.GunicornWebWorker` 실행
 
 Startup Command:
 
@@ -66,18 +81,20 @@ Startup Command:
 - `MicrosoftAppPassword`
 - `MicrosoftAppType=SingleTenant`
 - `MicrosoftAppTenantId`
-- `NANOBOT_INBOUND_URL=https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound`
+- `NANOBOT_INBOUND_URL=<relay inbound endpoint>`
+- `NANOBOT_INBOUND_HOST=<expected host header>`
 - `INTERNAL_TOKEN=<relay와 동일 토큰>`
 
 권장:
 
 - `NANOBOT_TIMEOUT_SEC=120`
+- `NANOBOT_VERIFY_SSL=false` (TLS 검증 이슈가 있으면)
 - `REFERENCE_STORE_PATH=/home/data/conversation_references.json`
 
 DNS/프록시 예시:
 
-- `moai-ext-mobis.com` -> `103.85.81.36` (A 레코드)
-- `/dt-atlassian/chat/*` -> relay `http://127.0.0.1:18800/*` 또는 내부 네트워크 주소로 프록시
+- `NANOBOT_INBOUND_HOST` 값으로 라우팅
+- relay inbound 경로(`/internal/inbound`, `/healthz`)가 백엔드에서 접근 가능하도록 프록시
 
 ## Pipeline Run Order
 
@@ -85,24 +102,24 @@ DNS/프록시 예시:
 
 ```bash
 cd /Users/ahk/github_codes/nanobot
-python -m nanobot relay --host 127.0.0.1 --port 18800
+python -m nanobot relay --host "${RELAY_BIND_HOST}" --port "${RELAY_BIND_PORT}"
 ```
 
 2. Bot Framework 백엔드 실행
 
 ```bash
 cd /Users/ahk/github_codes/nanobot/16.proactive-messages
-export NANOBOT_INBOUND_URL=http://127.0.0.1:18800/internal/inbound
+# .env에 값 입력 후 실행
 python app.py
 ```
 
 3. Azure Bot Service 설정
 
-- Messaging endpoint: `https://<your-backend>/api/messages`
+- Messaging endpoint: `${APP_BASE_URL}/api/messages`
 - Channels: Microsoft Teams 활성화
 - 브라우저 확인:
-  - `https://<your-backend>/healthz`
-  - `https://<your-backend>/api/messages` (안내문 반환)
+  - `${APP_BASE_URL}/healthz`
+  - `${APP_BASE_URL}/api/messages` (안내문 반환)
 
 4. Teams에서 테스트
 
@@ -120,11 +137,5 @@ python app.py
 
 원인(대부분): HTTPS/HTTP 프로토콜 불일치
 
-- `NANOBOT_INBOUND_URL`을 HTTPS로 설정했는데 실제 relay는 HTTP만 듣는 경우
+- TLS 엔드포인트로 호출했는데 relay가 평문 HTTP로 동작하는 경우
 - 프록시 TLS 종료/포워딩 설정 불일치
-
-로컬 테스트는 아래 URL부터 확인하세요.
-
-```bash
-http://127.0.0.1:18800/internal/inbound
-```

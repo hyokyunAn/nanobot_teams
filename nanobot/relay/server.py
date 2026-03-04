@@ -219,7 +219,7 @@ class TeamsInboundRelayServer:
         await self._runner.setup()
         self._site = web.TCPSite(self._runner, host=self.host, port=self.port)
         await self._site.start()
-        logger.info("Teams inbound relay listening on http://{}:{}", self.host, self.port)
+        logger.info("Teams inbound relay listening (host={}, port={})", self.host, self.port)
 
     async def stop(self) -> None:
         self._running = False

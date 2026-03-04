@@ -15,7 +15,7 @@ class CustomProvider(LLMProvider):
     def __init__(
         self,
         api_key: str = "no-key",
-        api_base: str = "http://localhost:8000/v1",
+        api_base: str = "",
         default_model: str = "default",
         azure_endpoint: str | None = None,
         api_version: str | None = None,

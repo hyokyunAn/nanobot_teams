@@ -10,7 +10,7 @@
 ### 환경변수
 
 ```bash
-export CONFLUENCE_BASE_URL="https://dt-confluence.mobis.com"
+export CONFLUENCE_BASE_URL="<CONFLUENCE_BASE_URL>"
 export CONFLUENCE_BEARER_TOKEN="your_pat_here"
 ```
 
@@ -65,10 +65,10 @@ nanobot 연결 후 실제 노출 이름은 `mcp_atlassian_<tool>` 입니다.
 ### 기본 환경변수
 
 ```bash
-export CONFLUENCE_BASE_URL="https://dt-confluence.mobis.com"
+export CONFLUENCE_BASE_URL="<CONFLUENCE_BASE_URL>"
 export CONFLUENCE_BEARER_TOKEN="your_pat_here"
-export DS_QA_PROMPT_PAGE_URL="https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/프롬프트"
-export DS_QA_DB_PAGE_URL="https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/DB"
+export DS_QA_PROMPT_PAGE_URL="<DS_QA_PROMPT_PAGE_URL>"
+export DS_QA_DB_PAGE_URL="<DS_QA_DB_PAGE_URL>"
 ```
 
 ID를 직접 지정하고 싶으면:
@@ -114,7 +114,7 @@ nanobot 연결 후 실제 노출 이름은 `mcp_dsqa_<tool>` 입니다.
 ### 기본 환경변수
 
 ```bash
-export JIRA_BASE_URL="https://dt-jira.mobis.com"
+export JIRA_BASE_URL="<JIRA_BASE_URL>"
 export JIRA_BEARER_TOKEN="your_pat_here"
 ```
 
@@ -165,7 +165,7 @@ nanobot 연결 후 실제 노출 이름은 `mcp_jira_<tool>` 입니다.
         "command": "python",
         "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/atlassian_confluence_mcp.py"],
         "env": {
-          "CONFLUENCE_BASE_URL": "https://dt-confluence.mobis.com",
+          "CONFLUENCE_BASE_URL": "<CONFLUENCE_BASE_URL>",
           "CONFLUENCE_BEARER_TOKEN": "your_pat_here"
         }
       },
@@ -173,17 +173,17 @@ nanobot 연결 후 실제 노출 이름은 `mcp_jira_<tool>` 입니다.
         "command": "python",
         "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/ds_qa_agent_mcp.py"],
         "env": {
-          "CONFLUENCE_BASE_URL": "https://dt-confluence.mobis.com",
+          "CONFLUENCE_BASE_URL": "<CONFLUENCE_BASE_URL>",
           "CONFLUENCE_BEARER_TOKEN": "your_pat_here",
-          "DS_QA_PROMPT_PAGE_URL": "https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/프롬프트",
-          "DS_QA_DB_PAGE_URL": "https://dt-confluence.mobis.com/spaces/GENAI/pages/133776732/DB"
+          "DS_QA_PROMPT_PAGE_URL": "<DS_QA_PROMPT_PAGE_URL>",
+          "DS_QA_DB_PAGE_URL": "<DS_QA_DB_PAGE_URL>"
         }
       },
       "jira": {
         "command": "python",
         "args": ["/Users/ahk/github_codes/nanobot/workspace/mcp/jira_mcp.py"],
         "env": {
-          "JIRA_BASE_URL": "https://dt-jira.mobis.com",
+          "JIRA_BASE_URL": "<JIRA_BASE_URL>",
           "JIRA_BEARER_TOKEN": "your_pat_here"
         }
       }

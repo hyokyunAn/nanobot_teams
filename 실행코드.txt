@@ -1,68 +1,72 @@
-nanobot run commands
-====================
+nanobot run commands (env-driven)
+=================================
 
-1) one-time install (backend server)
-------------------------------------
+1) one-time install
+-------------------
 cd /Users/ahk/github_codes/nanobot
 python -m pip install -e .
 python -m pip install -e ".[ui]"
 python -m pip install -r /Users/ahk/github_codes/nanobot/16.proactive-messages/requirements.txt
 
+cd /Users/ahk/github_codes/nanobot/16.proactive-messages
+cp .env.example .env
+# edit .env and fill required keys
 
-2) streamlit-only test mode
----------------------------
-# terminal A: run relay
-cd /Users/ahk/github_codes/nanobot
-export INTERNAL_TOKEN="your_token"
-python -m nanobot relay --host 0.0.0.0 --port 18800 --inbound-timeout 120
 
-# terminal B: run streamlit UI
+2) relay run (backend server)
+-----------------------------
 cd /Users/ahk/github_codes/nanobot
-export NANOBOT_INBOUND_URL="https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound"
-export INTERNAL_TOKEN="your_token"
+export INTERNAL_TOKEN="<shared_token>"
+export TEAMS_INTERNAL_TOKEN="<shared_token>"
+export RELAY_BIND_HOST="<relay_bind_host>"
+export RELAY_BIND_PORT="<relay_bind_port>"
+export RELAY_INBOUND_TIMEOUT="<relay_inbound_timeout_sec>"
+export TEAMS_PROACTIVE_URL="<teams_proactive_endpoint>"
+
+python -m nanobot relay \
+  --host "${RELAY_BIND_HOST}" \
+  --port "${RELAY_BIND_PORT}" \
+  --inbound-timeout "${RELAY_INBOUND_TIMEOUT}" \
+  --teams-proactive-url "${TEAMS_PROACTIVE_URL}"
+
+
+3) streamlit test
+-----------------
+cd /Users/ahk/github_codes/nanobot
+cp /Users/ahk/github_codes/nanobot/16.proactive-messages/.env.example .env
+# optionally copy relevant keys from 16.proactive-messages/.env:
+# NANOBOT_INBOUND_URL
+# NANOBOT_INBOUND_HOST
+# INTERNAL_TOKEN
+
 streamlit run streamlit_chat.py
 
-# streamlit sidebar values
-# Inbound URL: https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound
-# Internal Token: same as relay INTERNAL_TOKEN
+
+4) app service startup
+----------------------
+# Startup Command (choose one by deployment root)
+bash /home/site/wwwroot/startup.sh
+# or
+bash /home/site/wwwroot/16.proactive-messages/startup.sh
+
+# App Service config keys
+# MicrosoftAppId
+# MicrosoftAppPassword
+# MicrosoftAppType
+# MicrosoftAppTenantId
+# NANOBOT_INBOUND_URL
+# NANOBOT_INBOUND_HOST
+# NANOBOT_TIMEOUT_SEC
+# NANOBOT_VERIFY_SSL
+# INTERNAL_TOKEN
+# REFERENCE_STORE_PATH
 
 
-3) teams production structure
------------------------------
-# backend server: run relay
-cd /Users/ahk/github_codes/nanobot
-export INTERNAL_TOKEN="shared_token"
-export TEAMS_INTERNAL_TOKEN="shared_token"
-python -m nanobot relay \
-  --host 0.0.0.0 \
-  --port 18800 \
-  --inbound-timeout 120 \
-  --teams-proactive-url "https://<your-appservice>/internal/proactive"
+5) teams connection
+-------------------
+# Azure Bot Service Messaging endpoint:
+# ${APP_BASE_URL}/api/messages
 
-# Azure App Service env vars
-# MicrosoftAppId=<app_id>
-# MicrosoftAppPassword=<app_password>
-# MicrosoftAppType=SingleTenant
-# MicrosoftAppTenantId=<tenant_id>
-# NANOBOT_INBOUND_URL=https://moai-ext-mobis.com/dt-atlassian/chat/internal/inbound
-# INTERNAL_TOKEN=shared_token
-# NANOBOT_TIMEOUT_SEC=120
-# REFERENCE_STORE_PATH=/home/data/conversation_references.json
-
-# Azure App Service startup command
-# if deploy root is 16.proactive-messages:
-#   python app.py
-# if deploy root is repo root:
-#   cd 16.proactive-messages && python app.py
-
-# Azure Bot Service messaging endpoint
-# https://<your-appservice>/api/messages
-
-
-4) health checks
-----------------
-# app service
-https://<your-appservice>/healthz
-
-# relay (if exposed by reverse proxy path)
-https://moai-ext-mobis.com/dt-atlassian/chat/healthz
+# Health checks:
+# ${APP_BASE_URL}/healthz
+# ${NANOBOT_INBOUND_URL with /healthz path}

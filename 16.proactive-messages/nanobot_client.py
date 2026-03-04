@@ -17,10 +17,18 @@ class NanobotResult:
 
 
 class NanobotClient:
-    def __init__(self, inbound_url: str, timeout_sec: float, token: str = ""):
+    def __init__(
+        self,
+        inbound_url: str,
+        timeout_sec: float,
+        token: str = "",
+        host_header: str = "",
+        verify_ssl: bool = True,
+    ):
         self.inbound_url = inbound_url
         self.token = token
-        self._client = httpx.AsyncClient(timeout=timeout_sec)
+        self.host_header = host_header.strip()
+        self._client = httpx.AsyncClient(timeout=timeout_sec, verify=verify_ssl)
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -44,6 +52,9 @@ class NanobotClient:
         headers = {"content-type": "application/json"}
         if self.token:
             headers["x-internal-token"] = self.token
+        if self.host_header:
+            headers["host"] = self.host_header
+            headers["x-forwarded-host"] = self.host_header
 
         try:
             resp = await self._client.post(
